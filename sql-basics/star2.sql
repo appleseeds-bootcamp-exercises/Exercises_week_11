@@ -22,3 +22,4 @@ insert into students (first_name, last_name, been_dismissed, cohort) values
 update students set first_name = 'Shlomo' where student_id = 1;
 delete from students where student_id = 2;
 
+
