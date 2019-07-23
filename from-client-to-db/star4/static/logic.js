@@ -1,6 +1,3 @@
-$('#content').html('This is a transformed div')
-
-
 getActors = () => {
     $.get('/get_actors', function populateActors(data, status) {
         data = JSON.parse(data)
