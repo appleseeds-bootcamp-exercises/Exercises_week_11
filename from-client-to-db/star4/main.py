@@ -23,7 +23,6 @@ def statics():
         with connection.cursor() as c:
             c.execute(f'SELECT * FROM actors')
             actors = c.fetchall()
-            print(actors)
             return json.dumps(actors)
     except:
         return json.dumps({'error': 'Error with the db'})
