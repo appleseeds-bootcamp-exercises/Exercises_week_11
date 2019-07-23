@@ -19,9 +19,8 @@ FROM
 WHERE
     YEAR(e.hire_date) = 1993;
  
- 
 SELECT 
-    *
+    first_name, last_name, MIN(salary)
 FROM
     employees AS e
         JOIN
@@ -30,7 +29,8 @@ FROM
     salaries AS s ON e.emp_no = s.emp_no
 WHERE
     t.title = 'staff'
-ORDER BY s.salary ASC
+GROUP BY e.emp_no
+ORDER BY MIN(salary) ASC
 LIMIT 10;
 
 SELECT 
