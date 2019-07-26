@@ -1,77 +1,82 @@
-from bottle import run, route, get, post, delete, put, request
+from bottle import run, get, post, delete, put, request
 import pymysql
 import json
 
 connection = pymysql.connect(host='localhost',
                              user='root',
                              password='root',
-                             db='imdb',
+                             db='bootcamp',
                              charset='utf8',
                              cursorclass=pymysql.cursors.DictCursor,
                              )
-try:
+
+dict_unpack = lambda d, *k: [d[i] for i in k]
+
+
+def get_student_by_identifier(c, identifier, value):
+    c.execute(
+        'SELECT * FROM students where '+identifier+'=%s', (value))
+    return c.fetchone()
+
+
+@get('/student/<name>')
+def get_student(name):
+    # try:
     with connection.cursor() as c:
-        c.execute('USE bootcamp')
-except:
-    pass
-
-
-@get('/student')
-def get_student():
-    name = request.json.get('name')
-    try:
-        with connection.cursor() as c:
-            c.execute(
-                f'SELECT * FROM students where full_name="{name}"; ')
-            students = c.fetchone()
-            return json.dumps(students)
-    except:
-        return json.dumps({'error': 'Error with the db/ no such student exists'})
+        student = get_student_by_identifier(c, 'name', name)
+        if student is None:
+            return 'Error: no such student exists'
+        return json.dumps(student)
+    # except:
+    #     return 'Error: with the db'
 
 
 @post('/student')
 def add_student():
-    full_name = request.json.get('name')
-    is_cute = request.json.get('is_cute')
+    name, is_cute = dict_unpack(request.json, 'name', 'is_cute')
     try:
         with connection.cursor() as c:
+            if get_student_by_identifier(c, "name", name) is not None:
+                return 'Error: Student with this name already exist'
             query = """
             INSERT INTO `students`
             VALUES (%s, %s, %s)
             """
-            c.execute(query, (None, full_name,
-                              True if is_cute == 'True' else False))
+            c.execute(query, (None, name,
+                              1 if is_cute == 'True' else 0))
             connection.commit()
         return 'Student added'
     except:
-        return 'Sadly could not add student'
+        return 'Error: Sadly could not add student'
 
 
 @put('/student')
 def update_student():
-    id = request.json.get('id')
-    full_name = request.json.get('name')
-    is_cute = request.json.get('is_cute')
+    name, is_cute, id = dict_unpack(
+        request.json, 'name', 'is_cute', 'id')
     try:
         with connection.cursor() as c:
+            if get_student_by_identifier(c, 'id', id) is None:
+                return 'Error: no student with this id exists'
             query = """
             UPDATE students
-            SET full_name = %s, is_cute = %s
+            SET name = %s, is_cute = %s
             WHERE id=%s;
             """
             c.execute(
-                query, (full_name, 1 if is_cute.lower() == 'true' else 0, id))
+                query, (name, 1 if is_cute == 'True' else 0, id))
             connection.commit()
         return 'Student updated'
     except:
         return 'Sadly could not update student'
 
 
-@delete('/student')
-def delete_student():
-    id = request.json.get('id')
+@delete('/student/<id>')
+def delete_student(id):
     try:
         with connection.cursor() as c:
+            if get_student_by_identifier(c, 'id', id) is None:
+                return 'No student with this id exist!'
             query = """
             DELETE FROM students
             WHERE id=%s;
@@ -89,22 +94,25 @@ def get_all_students():
         with connection.cursor() as c:
             c.execute('SELECT * FROM students')
             students = c.fetchall()
+            if len(students)==0 :
+                return 'No students on the database'
             return json.dumps(students)
     except:
-        return json.dumps({'error': 'Error with the db'})
+        return json.dumps('Error: error with the database')
 
 
-@get('/cohort')
-def get_cohort():
-    name = request.json.get('name')
+@get('/cohort/<name>')
+def get_cohort(name):
     try:
         with connection.cursor() as c:
             c.execute(
                 f'SELECT * FROM cohorts where cohort_name="{name}"; ')
-            students = c.fetchone()
-            return json.dumps(students)
+            cohort = c.fetchone()
+            if cohort is None:
+                return 'Error: no such cohort exists'
+            return json.dumps(cohort)
     except:
-        return json.dumps({'error': 'Error with the db/ no such cohort exists'})
+        return json.dumps('Error: error with the database')
 
 
 @post('/cohort')
@@ -112,6 +120,10 @@ def add_cohort():
     name = request.json.get('name')
     try:
         with connection.cursor() as c:
+            c.execute(
+                'SELECT * FROM cohorts where name=%s', (name))
+            if c.fetchone() is not None:
+                return 'Error: cohort name already exist'
             query = """
             INSERT INTO `cohorts`
             VALUES (%s, %s)
@@ -123,11 +135,14 @@ def add_cohort():
         return 'Sadly could not add cohort'
 
 
-@delete('/cohort')
-def delete_cohort():
-    id = request.json.get('id')
+@delete('/cohort/<id>')
+def delete_cohort(id):
     try:
         with connection.cursor() as c:
+            c.execute(
+                'SELECT * FROM cohorts where id=%s', (id))
+            if c.fetchone() is None:
+                return 'Error: No cohort with this id exist'
             query = """
             DELETE FROM cohorts
             WHERE id=%s;
@@ -144,13 +159,15 @@ def get_all_cohorts():
     try:
         with connection.cursor() as c:
             c.execute('SELECT * FROM cohorts')
-            students = c.fetchall()
-            return json.dumps(students)
+            cohorts = c.fetchall()
+            if len(cohorts) == 0:
+                return 'no cohorts to show'
+            return json.dumps(cohorts)
     except:
         return json.dumps({'error': 'Error with the db'})
 
 
-@route('/')
+@get('/')
 def index():
     return 'Welcome to the Bootcamp API index page'
 
